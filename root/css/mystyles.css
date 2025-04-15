@@ -1,0 +1,7 @@
+body{
+    font-family: 'Times New Roman', Times, serif;
+    background-color: aqua;
+}
+h1,h2,h3, .subheading{
+    font-family: 'Times New Roman', Times, serif !important;
+}

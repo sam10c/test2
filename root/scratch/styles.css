@@ -1,0 +1,37 @@
+body{
+    font-family: Papyrus, Georgia, 'Times New Roman', Times, serif;
+    background-color: rgba(51, 54, 119, 0.663);
+    color: aliceblue;
+    background-image: url(../assets/img/Picture1.jpg);
+}
+a{
+    color: rgb(161, 230, 207);
+    background-color: grey;
+}
+h1,h2{
+    text-align: center;
+}
+img{
+    border: 5px solid orange;
+    padding: 5px;
+    height: 150px;
+    margin: auto;
+    display: block;
+}
+.rizz{
+    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+    color: hotpink;
+    border: 5px dashed yellow;
+    font-size: 400%;
+    font-weight: bolder;
+    background-color: limegreen;
+}
+.rizz:hover{
+    font-size: 450%;
+    color: red;
+    border: 5px dashed cyan;
+}
+li:hover{
+    text-decoration: underline;
+    background-color: rgb(76, 75, 75);
+}

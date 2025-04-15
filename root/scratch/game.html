@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4 Downs Football</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1a202c;
+        }
+        #gameCanvas {
+            background-color: #28a745; /* Field green */
+            /* Yard lines drawn dynamically now */
+            border: 3px solid #4a5568;
+            border-radius: 8px;
+            display: block;
+            touch-action: none;
+        }
+        .player {
+            position: absolute;
+            width: 20px; /* Defender size */
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            cursor: pointer;
+            transition: transform 0.1s ease-out, top 0.1s linear, left 0.1s linear; /* Added top/left transition */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            z-index: 5; /* Below football */
+        }
+        .qb, .receiver {
+             width: 25px; /* Offense size */
+             height: 25px;
+             font-size: 11px;
+        }
+        .qb { background-color: #facc15; border-color: #ca8a04; } /* Yellow */
+        .receiver { background-color: #3b82f6; border-color: #1d4ed8; } /* Blue */
+        .defender { background-color: #ef4444; border-color: #b91c1c; } /* Red */
+
+        .football {
+            position: absolute;
+            width: 15px;
+            height: 10px;
+            background-color: #854d0e; /* Brown */
+            border-radius: 50% / 60%;
+            border: 1px solid #fefce8;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            pointer-events: none;
+            z-index: 10; /* Above players */
+            transition: top 0.05s linear, left 0.05s linear; /* Faster transition for ball */
+        }
+
+        #messageBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            font-size: 1.5em;
+            text-align: center;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        #uiContainer {
+            position: absolute;
+            bottom: 10px; /* Moved UI to bottom */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7); /* Slightly more transparent */
+            padding: 8px 15px;
+            border-radius: 8px;
+            color: white;
+            /* Display managed by JS now */
+            /* display: flex; */
+            gap: 12px; /* Adjusted gap */
+            align-items: center;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.3); /* Shadow on top */
+            z-index: 50;
+            font-size: 0.9rem;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            justify-content: center;
+            transition: opacity 0.3s ease-out; /* Add transition for hiding/showing */
+        }
+         .uiItem {
+             background-color: rgba(255, 255, 255, 0.1);
+             padding: 4px 8px;
+             border-radius: 4px;
+             white-space: nowrap; /* Prevent text wrapping */
+         }
+         #timerDisplay {
+             font-weight: bold;
+             color: #facc15; /* Yellow timer */
+             min-width: 60px;
+             text-align: center;
+         }
+
+        #hikeButton { /* Renamed from startButton */
+            background-color: #16a34a; /* Green */
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            order: 5; /* Place button last */
+        }
+        #hikeButton:hover {
+            background-color: #15803d;
+        }
+         #hikeButton:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen">
+
+    <div id="gameContainer" class="relative">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="uiContainer" style="display: flex;"> <div id="scoreBoard" class="uiItem">Score: 0</div>
+            <div id="downDisplay" class="uiItem">1st Down</div>
+            <div id="yardsToGoDisplay" class="uiItem">& 10</div>
+            <div id="ballPositionDisplay" class="uiItem">Ball on: 20</div>
+            <div id="streakBoard" class="uiItem">Streak: 0</div>
+            <div id="timerDisplay" class="uiItem">Time: 3</div>
+            <button id="hikeButton">Hike</button>
+        </div>
+
+        <div id="playersContainer">
+            <div id="qb" class="player qb">QB</div>
+            <div id="receiver1" class="player receiver">R1</div>
+            <div id="receiver2" class="player receiver">R2</div>
+            <div id="receiver3" class="player receiver">R3</div>
+            <div id="receiver4" class="player receiver">R4</div>
+            <div id="defender1" class="player defender">D1</div>
+            <div id="defender2" class="player defender">D2</div>
+            <div id="defender3" class="player defender">D3</div>
+        </div>
+
+         <div id="football" class="football" style="display: none;"></div>
+         <div id="messageBox">Message Here</div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('gameContainer');
+        const playersContainer = document.getElementById('playersContainer');
+        const qbElement = document.getElementById('qb');
+        const receiverElements = [
+            document.getElementById('receiver1'),
+            document.getElementById('receiver2'),
+            document.getElementById('receiver3'),
+            document.getElementById('receiver4'),
+        ];
+        const defenderElements = [
+            document.getElementById('defender1'),
+            document.getElementById('defender2'),
+            document.getElementById('defender3'),
+        ];
+        const footballElement = document.getElementById('football');
+        const scoreBoard = document.getElementById('scoreBoard');
+        const streakBoard = document.getElementById('streakBoard');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const hikeButton = document.getElementById('hikeButton');
+        const messageBox = document.getElementById('messageBox');
+        const downDisplay = document.getElementById('downDisplay');
+        const yardsToGoDisplay = document.getElementById('yardsToGoDisplay');
+        const ballPositionDisplay = document.getElementById('ballPositionDisplay');
+        const uiContainer = document.getElementById('uiContainer'); // *** Get UI Container ***
+
+        // --- Game Constants ---
+        const FIELD_WIDTH = 800;
+        const FIELD_HEIGHT = 600;
+        const OFFENSE_PLAYER_SIZE = 25;
+        const DEFENSE_PLAYER_SIZE = 20;
+        const END_ZONE_Y = 20;
+        const STARTING_LINE_OF_SCRIMMAGE_Y = FIELD_HEIGHT - 120;
+        const QB_Y_OFFSET = 50;
+        const BASE_RECEIVER_SPEED = 0.7;
+        const BASE_DEFENDER_SPEED = 0.9;
+        const SPEED_INCREASE_FACTOR = 0.2;
+        const PASS_SPEED = 4;
+        const INTERCEPTION_RADIUS = 25;
+        const TACKLE_RADIUS = 15;
+        const THROW_TIME_LIMIT = 3;
+        const YARDS_TO_FIRST_DOWN = 10;
+        const TOTAL_FIELD_YARDS = 100;
+
+        // --- Game State Variables ---
+        let score = 0;
+        let consecutiveCompletions = 0;
+        let players = [];
+        let football = { active: false, x: 0, y: 0, targetX: 0, targetY: 0, targetPlayer: null };
+        let playActive = false;
+        let animationFrameId = null;
+        let currentDefenderSpeed = BASE_DEFENDER_SPEED;
+        let gamePaused = false;
+        let throwTimerId = null;
+        let timeRemaining = THROW_TIME_LIMIT;
+        let currentDown = 1;
+        let yardsToGo = YARDS_TO_FIRST_DOWN;
+        let lineOfScrimmageY = STARTING_LINE_OF_SCRIMMAGE_Y;
+        let pixelsPerYard = (STARTING_LINE_OF_SCRIMMAGE_Y - END_ZONE_Y) / 80;
+        let playResult = null;
+        let ballCarrier = null;
+
+        // --- Utility Functions ---
+        function getRandom(min, max) { return Math.random() * (max - min) + min; }
+        function getDistance(x1, y1, x2, y2) { const dx = x1 - x2; const dy = y1 - y2; return Math.sqrt(dx * dx + dy * dy); }
+        function getYardLine(yPos) {
+            const yardsFromGoal = Math.max(0, (yPos - END_ZONE_Y) / pixelsPerYard);
+             const displayYards = Math.round(100 - yardsFromGoal);
+             return Math.max(1, Math.min(99, displayYards));
+        }
+        function getDownString(down) {
+            if (down === 1) return "1st";
+            if (down === 2) return "2nd";
+            if (down === 3) return "3rd";
+            if (down === 4) return "4th";
+            return `${down}th`;
+        }
+
+
+        // --- Drawing Functions ---
+        function drawField() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 1;
+            const fieldPixelHeight = canvas.height - END_ZONE_Y * 2;
+            const fiveYardPixels = fieldPixelHeight / (TOTAL_FIELD_YARDS / 5);
+
+            for (let i = 1; i <= 19; i++) {
+                const y = END_ZONE_Y + i * fiveYardPixels;
+                if (y < canvas.height - END_ZONE_Y) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+            }
+
+            // Line of Scrimmage Marker (Blue)
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, lineOfScrimmageY);
+            ctx.lineTo(canvas.width, lineOfScrimmageY);
+            ctx.stroke();
+
+            // First Down Marker (Yellow)
+            const firstDownY = lineOfScrimmageY - (yardsToGo * pixelsPerYard);
+             if (firstDownY > END_ZONE_Y) {
+                ctx.strokeStyle = '#facc15';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(0, firstDownY);
+                ctx.lineTo(canvas.width, firstDownY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+             }
+        }
+
+
+        // --- Message Display ---
+        function showMessage(message, duration = 1500, callback) {
+            clearThrowTimer();
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            gamePaused = true;
+
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+                gamePaused = false;
+                if (callback) {
+                    callback();
+                }
+            }, duration);
+        }
+
+        // --- Player Initialization ---
+        function initializePlayers() {
+            players = [];
+            ballCarrier = null;
+
+            // QB
+            const qbY = Math.min(FIELD_HEIGHT - OFFENSE_PLAYER_SIZE, lineOfScrimmageY + QB_Y_OFFSET);
+            players.push({
+                id: 'qb', element: qbElement, x: FIELD_WIDTH / 2, y: qbY,
+                type: 'qb', size: OFFENSE_PLAYER_SIZE
+            });
+
+            // Receivers
+            const startPositionsX = [FIELD_WIDTH * 0.2, FIELD_WIDTH * 0.4, FIELD_WIDTH * 0.6, FIELD_WIDTH * 0.8];
+            if (receiverElements && receiverElements.length === 4) {
+                receiverElements.forEach((el, i) => {
+                    if (!el) { console.error(`Receiver element ${i+1} not found!`); return; }
+                    const receiver = {
+                        id: `receiver${i + 1}`, element: el, x: startPositionsX[i], y: lineOfScrimmageY,
+                        startX: startPositionsX[i], startY: lineOfScrimmageY, speed: BASE_RECEIVER_SPEED,
+                        type: 'receiver', route: defineRoute(i, lineOfScrimmageY),
+                        hasBall: false, isActive: true, size: OFFENSE_PLAYER_SIZE,
+                        routeState: { hasBroken: false }
+                    };
+                    players.push(receiver);
+                    el.onclick = () => handleReceiverClick(receiver);
+                    el.style.display = 'flex';
+                });
+            } else {
+                 console.error("Receiver elements array not populated correctly!");
+            }
+
+
+            // Defenders
+            const defenderStartX = [FIELD_WIDTH * 0.3, FIELD_WIDTH * 0.5, FIELD_WIDTH * 0.7];
+            currentDefenderSpeed = BASE_DEFENDER_SPEED + (Math.floor(consecutiveCompletions / 3) * SPEED_INCREASE_FACTOR);
+             if (defenderElements && defenderElements.length === 3) {
+                defenderElements.forEach((el, i) => {
+                     if (!el) { console.error(`Defender element ${i+1} not found!`); return; }
+                    let startY = lineOfScrimmageY - 30 - getRandom(0, 20);
+                    startY = Math.max(END_ZONE_Y + DEFENSE_PLAYER_SIZE, startY);
+                    players.push({
+                        id: `defender${i + 1}`, element: el, x: defenderStartX[i], y: startY,
+                        speed: currentDefenderSpeed, type: 'defender', targetReceiver: null,
+                        isActive: true, size: DEFENSE_PLAYER_SIZE
+                    });
+                    el.style.display = 'flex';
+                });
+             } else {
+                 console.error("Defender elements array not populated correctly!");
+             }
+
+            positionPlayers();
+        }
+
+        // --- Route Definitions ---
+        function defineRoute(receiverIndex, currentLOS) {
+            const breakDistance = 100;
+            switch (receiverIndex % 4) {
+                case 0: return { type: 'streak' };
+                case 1: return { type: 'slant', angle: Math.PI / 6 };
+                case 2: return { type: 'out', targetX: FIELD_WIDTH - 50, breakY: Math.max(END_ZONE_Y + 10, currentLOS - breakDistance) };
+                case 3: return { type: 'slant', angle: -Math.PI / 6 };
+                default: return { type: 'streak' };
+            }
+        }
+
+        // --- Positioning ---
+        function positionPlayers() {
+             players.forEach(p => {
+                 if (p.element) {
+                    const size = p.size || DEFENSE_PLAYER_SIZE;
+                    if (p.isActive) {
+                        p.element.style.left = `${p.x - size / 2}px`;
+                        p.element.style.top = `${p.y - size / 2}px`;
+                        p.element.style.display = 'flex';
+                    } else {
+                         p.element.style.display = 'none';
+                    }
+                 } else {
+                     console.warn(`Player ${p.id} has no associated element.`);
+                 }
+             });
+         }
+
+        function positionFootball() {
+            if (football.active) {
+                footballElement.style.left = `${football.x - 7.5}px`;
+                footballElement.style.top = `${football.y - 5}px`;
+                footballElement.style.display = 'block';
+            } else {
+                footballElement.style.display = 'none';
+            }
+        }
+
+        // --- Game Loop ---
+        function gameLoop() {
+            if (gamePaused) {
+                 animationFrameId = requestAnimationFrame(gameLoop);
+                 return;
+            }
+            drawField();
+            if (playActive) {
+                updatePlayerPositions();
+                updateFootballPosition();
+                checkCollisions();
+                checkTouchdown();
+            }
+            positionPlayers();
+            positionFootball();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Update Logic ---
+        function updatePlayerPositions() { /* ... Same as before ... */ }
+        function runRoute(receiver) { /* ... Same as before ... */ }
+        function findClosestActiveReceiver(defender) { /* ... Same as before ... */ }
+        function updateFootballPosition() { /* ... Same as before ... */ }
+
+
+        // --- Collision & Event Handling ---
+        function handleReceiverClick(receiver) { /* ... Same as before ... */ }
+        function handlePassArrival() { /* ... Same as before ... */ }
+        function checkCollisions() { /* ... Same as before ... */ }
+        function handleTackle(playerTackled) { /* ... Same as before ... */ }
+        function checkTouchdown() { /* ... Same as before ... */ }
+         function handleOutOfBounds(player) { /* ... Same as before ... */ }
+         function handleTouchdown() { /* ... Same as before ... */ }
+        function handleSack() { /* ... Same as before ... */ }
+        function handleTurnover(message = "Turnover on Downs!") { /* ... Same as before ... */ }
+
+        // --- End Play Processing ---
+        function endPlay(finalY = null) { /* ... Same as before ... */ }
+
+
+        // --- Game Flow ---
+        function setupForNextDown() {
+             if (animationFrameId) {
+                 cancelAnimationFrame(animationFrameId);
+                 animationFrameId = null;
+             }
+             playActive = false;
+             gamePaused = false;
+             football.active = false;
+             footballElement.style.display = 'none';
+             clearThrowTimer();
+             playResult = null;
+             ballCarrier = null;
+
+             initializePlayers();
+             updateUI();
+             hikeButton.disabled = false;
+             hikeButton.textContent = "Hike";
+             messageBox.style.display = 'none';
+             uiContainer.style.display = 'flex'; // *** SHOW UI Container ***
+             uiContainer.style.opacity = '1'; // Ensure opacity is reset
+
+             if (!animationFrameId) {
+                 gameLoop();
+             }
+        }
+
+        function hikeBall() {
+            if (playActive || gamePaused) return;
+            playActive = true;
+            hikeButton.textContent = "Play Active";
+            hikeButton.disabled = true;
+            playResult = null;
+            uiContainer.style.opacity = '0'; // Start fade out
+            setTimeout(() => { // Hide after fade out
+                 uiContainer.style.display = 'none'; // *** HIDE UI Container ***
+            }, 300); // Match CSS transition duration
+
+
+            // Reset necessary player states
+            players.forEach(p => {
+                 p.isActive = true;
+                 if (p.element) p.element.style.display = 'flex';
+                 if (p.type === 'receiver') {
+                     p.hasBall = false;
+                     p.routeState = { hasBroken: false };
+                 }
+                 if (p.type === 'defender') {
+                      p.targetReceiver = findClosestActiveReceiver(p);
+                 }
+            });
+
+            positionPlayers();
+            startThrowTimer();
+
+            if (!animationFrameId) {
+                console.warn("Game loop wasn't running before hike. Starting now.");
+                gameLoop();
+            }
+        }
+
+        // --- Timer Functions ---
+        function startThrowTimer() { /* ... Same as before ... */ }
+        function clearThrowTimer() { /* ... Same as before ... */ }
+
+        // --- UI Updates ---
+        function updateUI() { /* ... Same as before ... */ }
+
+        // --- Canvas Resizing ---
+        function resizeCanvas() { /* ... Same as before ... */ }
+
+        // --- Event Listeners ---
+        hikeButton.addEventListener('click', hikeBall);
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- Initial Setup ---
+        resizeCanvas();
+        setupForNextDown();
+
+    </script>
+</body>
+</html>
